@@ -1,4 +1,5 @@
 -module(regex2tree).
+-include_lib("eunit/include/eunit.hrl").
 
 %% API
 -export([re2post/1, extract_from_parentheses/1]).
@@ -17,3 +18,21 @@ re2post(Input, Output) ->
 end.
 
 extract_from_parentheses(String) -> [Inside|_] = string:split(string:slice(String, 1), ")", trailing), Inside.
+
+
+re2post_test() ->
+  [
+    ?assert(re2post("") =:= []),
+    ?assert(re2post("a") =:= ["a"]),
+    ?assert(re2post("a(bb)") =:= ["a","b","b","."]),
+    ?assert(re2post("a+c") =:= ["a","+",".","c"])
+  ].
+
+extract_from_parentheses_test() ->
+  [
+    ?_assert(extract_from_parentheses("()") =:= ""),
+    ?_assert(extract_from_parentheses("(a)") =:= "a"),
+    ?_assert(extract_from_parentheses("(ab)") =:= "ab"),
+    ?_assert(extract_from_parentheses("(asdf)") =:= "asdf"),
+    ?_assert(extract_from_parentheses("((dupa)a)") =:= "(dupa)a")
+  ].
