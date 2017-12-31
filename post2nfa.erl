@@ -26,7 +26,7 @@ getb() ->
 
 
 convert(Input) -> convert(Input, [], 0).
-convert([], [{Head, _} | _], _) -> Head;
+convert([], [{Head, _, _} | _], _) -> Head;
 convert([Char | Input], Stack, CurrentState) ->
 %%  io:fwrite("Char: "),
 %%  io:write(Char),
@@ -67,40 +67,45 @@ add_edges(Graph, [Head | Tail]) ->
   add_edges(Graph, Tail).
 
 
-process_concatenation([{First, EntryState} | Tail], State) ->
-  [{Second, _} | Rest] = Tail,
+process_concatenation([{First, FirstEntryState, FirstExitState} | Tail], State) ->
+  [{Second, SecondEntryState, SecondExitState} | Rest] = Tail,
   Graph = merge(First, Second),
-  {[{Graph, EntryState} | Rest], State}. %% TODO wtf state? can remove state from concat?
+  digraph:add_edge(Graph, digraph:vertex(First, {vertex, FirstExitState}),
+    digraph:vertex(Second, {vertex, SecondEntryState}), eps),
+  {[{Graph, FirstEntryState, SecondExitState} | Rest], State}.
 
 
-process_alternation([{First, FirstState} | Tail], State) ->
-  [{Second, SecondState} | Rest] = Tail,
+process_alternation([{First, FirstEntryState, FirstExitState} | Tail], State) ->
+  [{Second, SecondEntryState, SecondExitState} | Rest] = Tail,
   Graph = merge(First, Second),
   StartVertex = digraph:add_vertex(Graph, {vertex, State + 1}),
   EndVertex = digraph:add_vertex(Graph, {vertex, State + 2}),
-  FirstVertex = digraph:vertex(First, {vertex, FirstState}),
-  SecondVertex = digraph:vertex(Second, {vertex, SecondState}),
-  digraph:add_edge(Graph, StartVertex, FirstVertex, eps),
-  digraph:add_edge(Graph, StartVertex, SecondVertex, eps),
-  digraph:add_edge(Graph, FirstVertex, EndVertex, eps),
-  digraph:add_edge(Graph, SecondVertex, EndVertex, eps),
-  {[{Graph, State + 1} | Rest], State + 2}.
+  FirstEntryVertex = digraph:vertex(First, {vertex, FirstEntryState}),
+  FirstExitVertex = digraph:vertex(First, {vertex, FirstExitState}),
+  SecondEntryVertex = digraph:vertex(Second, {vertex, SecondEntryState}),
+  SecondExitVertex = digraph:vertex(Second, {vertex, SecondExitState}),
+  digraph:add_edge(Graph, StartVertex, FirstEntryVertex, eps),
+  digraph:add_edge(Graph, StartVertex, SecondEntryVertex, eps),
+  digraph:add_edge(Graph, FirstExitVertex, EndVertex, eps),
+  digraph:add_edge(Graph, SecondExitVertex, EndVertex, eps),
+  {[{Graph, State + 1, State + 2} | Rest], State + 2}.
 
 
-process_multiplication([{Head, EntryState} | Tail], State) ->
+process_multiplication([{Head, EntryState, ExitState} | Tail], State) ->
   NewVertex = digraph:add_vertex(Head, {vertex, State + 1}),
-  HeadVertex = digraph:vertex(Head, {vertex, EntryState}),
-  digraph:add_edge(Head, NewVertex, HeadVertex, eps),
-  digraph:add_edge(Head, HeadVertex, NewVertex, eps),
-  {[{Head, State + 1} | Tail], State + 1}.
+  HeadEntryVertex = digraph:vertex(Head, {vertex, EntryState}),
+  HeadExitVertex = digraph:vertex(Head, {vertex, ExitState}),
+  digraph:add_edge(Head, NewVertex, HeadEntryVertex, eps),
+  digraph:add_edge(Head, HeadExitVertex, NewVertex, eps),
+  {[{Head, State + 1, State + 1} | Tail], State + 1}.
 
 
 process_literal(CharLiteral, Stack, State) ->
-  GraphPiece = digraph:new(),
-  StartVertex = digraph:add_vertex(GraphPiece, {vertex, State + 1}),
-  EndVertex = digraph:add_vertex(GraphPiece, {vertex, State + 2}),
-  digraph:add_edge(GraphPiece, StartVertex, EndVertex, CharLiteral),
-  {[{GraphPiece, State} | Stack], State + 2}.
+  Graph = digraph:new(),
+  StartVertex = digraph:add_vertex(Graph, {vertex, State + 1}),
+  EndVertex = digraph:add_vertex(Graph, {vertex, State + 2}),
+  digraph:add_edge(Graph, StartVertex, EndVertex, CharLiteral),
+  {[{Graph, State + 1, State + 2} | Stack], State + 2}.
 
 
 %% TEST
