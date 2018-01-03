@@ -1,5 +1,6 @@
 -module(post2nfa).
 -include_lib("eunit/include/eunit.hrl").
+-include("records.hrl").
 
 %% API
 -export([convert/1, merge/2, geta/0, getb/0, add_vertices/2, getg/0]).
@@ -70,38 +71,53 @@ add_edges(Graph, [Head | Tail]) ->
   add_edges(Graph, Tail).
 
 
-process_concatenation([{Second, SecondEntryState, SecondExitState} | Tail], State) ->
-  [{First, FirstEntryState, FirstExitState} | Rest] = Tail,
+process_concatenation([Second, First | Tail], State) ->
+  Graph = merge(First#graph.graph, Second#graph.graph),
+  digraph:add_edge(Graph, {vertex, First#graph.exit}, {vertex, Second#graph.entry}, eps),
+  ConcatenationGraph = #graph{graph = Graph,
+                              entry = First#graph.entry,
+                              exit  = Second#graph.exit},
+  {[ConcatenationGraph | Tail], State}.
+
+
+process_alternation([Second, First | Tail], State) ->
   Graph = merge(First, Second),
-  digraph:add_edge(Graph, {vertex, FirstExitState}, {vertex, SecondEntryState}, eps),
-  {[{Graph, FirstEntryState, SecondExitState} | Rest], State}.
+  EntryState = State + 1,
+  ExitState = State + 2,
+  StartVertex = digraph:add_vertex(Graph, {vertex, EntryState}),
+  EndVertex = digraph:add_vertex(Graph, {vertex, ExitState}),
+  digraph:add_edge(Graph, StartVertex, {vertex, Second#graph.entry}, eps),
+  digraph:add_edge(Graph, StartVertex, {vertex, First#graph.entry}, eps),
+  digraph:add_edge(Graph, {vertex, Second#graph.exit}, EndVertex, eps),
+  digraph:add_edge(Graph, {vertex, First#graph.exit}, EndVertex, eps),
+  AlternationGraph = #graph{graph = Graph,
+                            entry = EntryState,
+                            exit = ExitState},
+  {[AlternationGraph | Tail], ExitState}.
 
 
-process_alternation([{Second, SecondEntryState, SecondExitState} | Tail], State) ->
-  [{First, FirstEntryState, FirstExitState} | Rest] = Tail,
-  Graph = merge(First, Second),
-  StartVertex = digraph:add_vertex(Graph, {vertex, State + 1}),
-  EndVertex = digraph:add_vertex(Graph, {vertex, State + 2}),
-  digraph:add_edge(Graph, StartVertex, {vertex, SecondEntryState}, eps),
-  digraph:add_edge(Graph, StartVertex, {vertex, FirstEntryState}, eps),
-  digraph:add_edge(Graph, {vertex, SecondExitState}, EndVertex, eps),
-  digraph:add_edge(Graph, {vertex, FirstExitState}, EndVertex, eps),
-  {[{Graph, State + 1, State + 2} | Rest], State + 2}.
-
-
-process_multiplication([{Head, EntryState, ExitState} | Tail], State) ->
-  NewVertex = digraph:add_vertex(Head, {vertex, State + 1}),
-  digraph:add_edge(Head, NewVertex, {vertex, EntryState}, eps),
-  digraph:add_edge(Head, {vertex, ExitState}, NewVertex, eps),
-  {[{Head, State + 1, State + 1} | Tail], State + 1}.
+process_multiplication([Top | Tail], State) ->
+  LoopState = State + 1,
+  NewVertex = digraph:add_vertex(Top#graph.graph, {vertex, LoopState}),
+  digraph:add_edge(Top#graph.graph, NewVertex, {vertex, Top#graph.entry}, eps),
+  digraph:add_edge(Top#graph.graph, {vertex, Top#graph.exit}, NewVertex, eps),
+  MultiplicationGraph = #graph{graph = Top#graph.graph,
+                               entry = LoopState,
+                               exit = LoopState},
+  {[MultiplicationGraph | Tail], LoopState}.
 
 
 process_literal(CharLiteral, Stack, State) ->
   Graph = digraph:new(),
-  StartVertex = digraph:add_vertex(Graph, {vertex, State + 1}),
-  EndVertex = digraph:add_vertex(Graph, {vertex, State + 2}),
+  EntryState = State + 1,
+  ExitState = State + 2,
+  StartVertex = digraph:add_vertex(Graph, {vertex, EntryState}),
+  EndVertex = digraph:add_vertex(Graph, {vertex, ExitState}),
   digraph:add_edge(Graph, StartVertex, EndVertex, CharLiteral),
-  {[{Graph, State + 1, State + 2} | Stack], State + 2}.
+  CharLiteralGraph = #graph{graph = Graph,
+                            entry = EntryState,
+                            exit = ExitState},
+  {[CharLiteralGraph | Stack], ExitState}.
 
 
 %% TEST

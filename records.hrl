@@ -1,0 +1,1 @@
+-record(graph, {graph, entry, exit}).
