@@ -1,1 +1,2 @@
--record(graph, {graph, entry, exit}).
+-record(graph, {nfa, entry, exit}).
+-record(traversal, {graph, current_state, matched}).

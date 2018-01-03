@@ -72,9 +72,9 @@ add_edges(Graph, [Head | Tail]) ->
 
 
 process_concatenation([Second, First | Tail], State) ->
-  Graph = merge(First#graph.graph, Second#graph.graph),
+  Graph = merge(First#graph.nfa, Second#graph.nfa),
   digraph:add_edge(Graph, {vertex, First#graph.exit}, {vertex, Second#graph.entry}, eps),
-  ConcatenationGraph = #graph{graph = Graph,
+  ConcatenationGraph = #graph{nfa   = Graph,
                               entry = First#graph.entry,
                               exit  = Second#graph.exit},
   {[ConcatenationGraph | Tail], State}.
@@ -90,20 +90,20 @@ process_alternation([Second, First | Tail], State) ->
   digraph:add_edge(Graph, StartVertex, {vertex, First#graph.entry}, eps),
   digraph:add_edge(Graph, {vertex, Second#graph.exit}, EndVertex, eps),
   digraph:add_edge(Graph, {vertex, First#graph.exit}, EndVertex, eps),
-  AlternationGraph = #graph{graph = Graph,
+  AlternationGraph = #graph{nfa   = Graph,
                             entry = EntryState,
-                            exit = ExitState},
+                            exit  = ExitState},
   {[AlternationGraph | Tail], ExitState}.
 
 
 process_multiplication([Top | Tail], State) ->
   LoopState = State + 1,
-  NewVertex = digraph:add_vertex(Top#graph.graph, {vertex, LoopState}),
-  digraph:add_edge(Top#graph.graph, NewVertex, {vertex, Top#graph.entry}, eps),
-  digraph:add_edge(Top#graph.graph, {vertex, Top#graph.exit}, NewVertex, eps),
-  MultiplicationGraph = #graph{graph = Top#graph.graph,
+  NewVertex = digraph:add_vertex(Top#graph.nfa, {vertex, LoopState}),
+  digraph:add_edge(Top#graph.nfa, NewVertex, {vertex, Top#graph.entry}, eps),
+  digraph:add_edge(Top#graph.nfa, {vertex, Top#graph.exit}, NewVertex, eps),
+  MultiplicationGraph = #graph{nfa   = Top#graph.nfa,
                                entry = LoopState,
-                               exit = LoopState},
+                               exit  = LoopState},
   {[MultiplicationGraph | Tail], LoopState}.
 
 
@@ -114,9 +114,9 @@ process_literal(CharLiteral, Stack, State) ->
   StartVertex = digraph:add_vertex(Graph, {vertex, EntryState}),
   EndVertex = digraph:add_vertex(Graph, {vertex, ExitState}),
   digraph:add_edge(Graph, StartVertex, EndVertex, CharLiteral),
-  CharLiteralGraph = #graph{graph = Graph,
+  CharLiteralGraph = #graph{nfa   = Graph,
                             entry = EntryState,
-                            exit = ExitState},
+                            exit  = ExitState},
   {[CharLiteralGraph | Stack], ExitState}.
 
 
