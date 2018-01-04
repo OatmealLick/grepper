@@ -11,7 +11,7 @@ dispatch(Text) -> dispatch(Text, process_count(), 0, string:length(Text), []).
 dispatch(_, 0, _, _, PidList) -> lists:reverse(PidList);
 dispatch(Text, ProcessesLeft, SliceStart, SliceLength, PidList) ->
   Pid = spawn(graph_processor, process, [string:slice(Text, SliceStart, SliceLength)]),
-  dispatch(Text, ProcessesLeft - 1, SliceLength, SliceStart + SliceLength, [Pid|PidList]).
+  dispatch(Text, ProcessesLeft - 1, SliceStart + SliceLength, SliceLength, [Pid|PidList]).
 
 %% TEST
 process_count_test() ->
