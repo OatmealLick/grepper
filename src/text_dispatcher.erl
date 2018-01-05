@@ -7,15 +7,28 @@
 process_count() -> 4.
 
 dispatch([]) -> empty_text;
-dispatch(Text) -> dispatch(Text, process_count(), 0, string:length(Text), []).
-dispatch(_, 0, _, _, PidList) -> lists:reverse(PidList);
-dispatch(Text, ProcessesLeft, SliceStart, TextLength, PidList) ->
+dispatch(Text) ->
+  TextPieces = slice(Text),
+  lists:map(fun({TextPiece}) -> spawn(graph_processor, process, [TextPiece]) end, TextPieces).
+
+slice(Text) -> slice(Text, process_count(), 0, string:length(Text), []).
+slice(_, 0, _, _, TextPieces) -> lists:reverse(TextPieces);
+slice(Text, ProcessesLeft, SliceStart, TextLength, TextPieces) ->
   SliceLength = TextLength div ProcessesLeft,
-  Pid = spawn(graph_processor, process, [string:slice(Text, SliceStart, SliceLength)]),
-  dispatch(Text, ProcessesLeft - 1, SliceStart + SliceLength, TextLength - SliceLength, [Pid|PidList]).
+  [string:slice(Text, SliceStart, SliceLength) |
+    slice(Text, ProcessesLeft - 1, SliceStart + SliceLength, TextLength - SliceLength, TextPieces)].
 
 %% TEST
 process_count_test() ->
   [
     ?assert(process_count() =:= 4) % :^)
+  ].
+
+slice_test() ->
+  [
+    ?assertMatch(L when length(L) == 4, slice("hello")),
+    ?assertMatch(L when length(L) == 4, slice("hell")),
+    ?assertMatch(["h", "e", "l", "l"], slice("hell")),
+    ?assertMatch(["he", "ll", "ho", "und"], slice("hellhound")),
+    ?assertMatch(["he", "ll", "hou", "nds"], slice("hellhounds"))
   ].
