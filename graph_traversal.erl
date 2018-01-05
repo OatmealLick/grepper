@@ -5,23 +5,12 @@
 %% API
 -export([traverse/2]).
 
-traverse(Matcher, Text) -> base_traverse(Matcher, Text).
-
 %% @doc
 %% Feeds compiled NFA graph with given text and searches for matches.
 %% Whenever there is more than one edge emanating from current state labeled with eps new process(es) are created,
 %% one for each edge.
 %% @end
-traverse_step(Matcher, []) -> throw({end_of_input, Matcher}); % TODO execution should stop here and be handled elsewhere
-traverse_step(Matcher, [Char | _Rest]) ->
-  case match_found(Matcher) of
-    true -> Match = lists:reverse(Matcher#traversal.matched),
-            send_match_report(Match);
-    false -> ok
-  end,
-  Edges = digraph:out_edges(Matcher#traversal.graph, {vertex, Matcher#traversal.current_state}),
-  PossibleTransitions = lists:filtermap(fun(Edge) -> is_traversable(Edge, Char) end, Edges),
-  _Matchers = lists:map(fun(Transition) -> create_next_state_matcher(Matcher, Transition) end, PossibleTransitions).
+traverse(Matcher, Text) -> base_traverse(Matcher, Text).
 
 %% @doc
 %% base_traverse/2 represents the main line of looking for a match - the one that was spawned first and will
@@ -30,11 +19,11 @@ traverse_step(Matcher, [Char | _Rest]) ->
 %% @end
 base_traverse(Matcher, Text) ->
   Matchers = traverse_step(Matcher, Text),
-  case length(Matchers) == 0 of
-    true ->
+  case length(Matchers) of
+    0 ->
       {UpdatedMatcher, RestoredInput} = reset(Matcher),
       base_traverse(UpdatedMatcher, RestoredInput ++ Text);
-    false ->
+    _More ->
       [BaseMatcher | OtherMatchers] = Matchers,
       dispatch(OtherMatchers, Text),
       base_traverse(BaseMatcher, Text)
@@ -46,13 +35,29 @@ base_traverse(Matcher, Text) ->
 %% @end
 spawned_traverse(Matcher, Text) ->
   Matchers = traverse_step(Matcher, Text),
-  case length(Matchers) == 0 of
-    true -> dead_end;
-    false ->
+  case length(Matchers) of
+    0 -> dead_end;
+    _More ->
       [BaseMatcher | OtherMatchers] = Matchers,
       dispatch(OtherMatchers, Text),
       spawned_traverse(BaseMatcher, Text)
   end.
+
+%% @doc
+%% Checks if matcher has reached the matching state and generates the list of matchers that can be created from
+%% current state by travelling along one of the emanating paths.
+traverse_step(Matcher, []) -> throw({end_of_input, Matcher}); % TODO execution should stop here and be handled elsewhere
+traverse_step(Matcher, [Char | _Rest]) ->
+  case match_found(Matcher) of
+    true ->
+      Match = lists:reverse(Matcher#traversal.matched),
+      send_match_report(Match);
+    false -> ok
+  end,
+  RawEdges = digraph:out_edges(Matcher#traversal.graph, {vertex, Matcher#traversal.current_state}),
+  Edges = lists:map(fun(Edge) -> digraph:edge(Matcher#traversal.graph, Edge) end, RawEdges),
+  PossibleTransitions = lists:filtermap(fun(Edge) -> is_traversable(Edge, Char) end, Edges),
+  _Matchers = lists:map(fun(Transition) -> create_next_state_matcher(Matcher, Transition) end, PossibleTransitions).
 
 match_found(Matcher) -> Matcher#traversal.current_state == (Matcher#traversal.graph)#graph.exit.
 
