@@ -2,12 +2,12 @@
  [{description, "An OTP application"},
   {vsn, "0.1.0"},
   {registered, []},
-  {mod, { grepper_app, []}},
+  {mod, { grepper_app, ["apps/grepper/resources/file.txt"]}},
   {applications,
    [kernel,
     stdlib
    ]},
-  {env,[{file, "resources/file.txt"}]},
+  {env,[]},
   {modules, []},
 
   {maintainers, []},
