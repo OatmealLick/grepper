@@ -3,7 +3,7 @@
 -include("records.hrl").
 
 %% API
--export([traverse/2, test/0]).
+-export([traverse/2, spawned_traverse/2, test/0]).
 
 %% @doc
 %% Feeds compiled NFA graph with given text and searches for matches.
@@ -17,15 +17,14 @@ traverse(Matcher, Text) -> base_traverse(Matcher, Text).
 %% try to match beginning with every text character as the first character of the potential match. If a match on base
 %% traversal fails, the matcher is reset and traversing continues.
 %% @end
-base_traverse(Matcher, []) -> throw({end_of_input, Matcher}); % TODO execution should stop here and be handled elsewhere
+
+% TODO execution should stop here and be handled elsewhere
+base_traverse(_Matcher, []) -> {ok, end_of_input};
 base_traverse(Matcher, [Char | Text]) ->
-  %io:fwrite("Text: ~p ~n", [[Char | Text]]),
-  %io:fwrite("Matcher: ~p ~n", [Matcher]),
   Matchers = traverse_step(Matcher, Char),
   lists:map(fun(M) -> notify_if_match_found(M) end, Matchers),
   case length(Matchers) of
     0 ->
-      %io:fwrite("RESET~n"),
       {ResetMatcher, NextText} = reset(Matcher, [Char | Text]),
       base_traverse(ResetMatcher, NextText);
     _More ->
@@ -38,12 +37,14 @@ base_traverse(Matcher, [Char | Text]) ->
 %% spawned_traverse/2 represents the diverged line of looking for a match - the ones that were spawned in states with
 %% more than 1 emanating edge. If a match on spawned traversal fails, the process dies with dead_end message.
 %% @end
-spawned_traverse(Matcher, []) -> throw({end_of_input, Matcher}); % TODO execution should stop here and be handled elsewhere
+
+% TODO execution should stop here and be handled elsewhere
+spawned_traverse(_Matcher, []) -> {ok, end_of_input};
 spawned_traverse(Matcher, [Char | Text]) ->
   Matchers = traverse_step(Matcher, Char),
   lists:map(fun(M) -> notify_if_match_found(M) end, Matchers),
   case length(Matchers) of
-    0 -> dead_end;
+    0 -> exit(self(), normal);
     _More ->
       [BaseMatcher | OtherMatchers] = Matchers,
       dispatch(OtherMatchers, [Char | Text]),
@@ -118,6 +119,6 @@ next_text(Matcher, [Char | Text]) ->
 %% TEST
 
 test() ->
-  Graph = post2nfa:convert("ab.c.*"),
-  Matcher = #traversal{graph = Graph, current_state = Graph#graph.entry, matched = []},
-  traverse(Matcher, "ababc").
+  Graph = post2nfa:convert(regex2post:convert("ab*")),
+  Matcher = #traversal{graph = Graph, current_state = Graph#graph.entry},
+  traverse(Matcher, "abbabcacb").
