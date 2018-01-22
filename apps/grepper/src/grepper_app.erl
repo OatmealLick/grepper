@@ -15,9 +15,7 @@
 %%====================================================================
 
 start(_StartType, _StartArgs) ->
-    {_, FilePath} = application:get_env(grepper, file),
-    file_handler:handle(FilePath),
-    grepper_sup:start_link().
+    grepper_sup:start_link(_StartArgs).
 
 %%--------------------------------------------------------------------
 stop(_State) ->
