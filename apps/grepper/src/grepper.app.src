@@ -1,6 +1,6 @@
 {application, grepper,
  [{description, "An OTP application"},
-  {vsn, "0.1.0"},
+  {vsn, "1.0.0"},
   {registered, []},
   {mod, { grepper_app, ["apps/grepper/resources/file.txt"]}},
   {applications,
