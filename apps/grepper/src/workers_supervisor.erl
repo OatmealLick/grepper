@@ -25,7 +25,6 @@ init([]) ->
 %%% Internal functions
 %%%===================================================================
 
-%% FIXME id
 create_worker_template() -> #{
   id => searcher,
   start => {searcher, start_link, []},

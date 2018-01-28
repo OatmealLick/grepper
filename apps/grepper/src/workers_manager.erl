@@ -1,9 +1,12 @@
 -module(workers_manager).
-
 -behaviour(gen_server).
+-include("records.hrl").
 
 %% API
--export([start_link/1]).
+-export([start_link/1,
+         report_match/1,
+         get_next_part/1,
+         spawn_worker/2]).
 
 %% gen_server callbacks
 -export([init/1,
@@ -15,6 +18,7 @@
 
 -record(state, {workers_sup,
                 workers_refs = [],
+                resources = #{},
                 found = 0,
                 searching = 0}).
 
@@ -25,6 +29,15 @@
 start_link(SupervisorPid) ->
   gen_server:start_link({local, ?MODULE}, ?MODULE, {SupervisorPid}, []).
 
+report_match(Match) ->
+  gen_server:cast(?MODULE, {match, Match}).
+
+get_next_part(M) ->
+  gen_server:call(?MODULE, {next_part, M#matcher.part_id}).
+
+spawn_worker(Matcher, Text) ->
+  gen_server:cast(?MODULE, {spawn_worker, Matcher, Text}).
+
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -34,21 +47,20 @@ init({SupervisorPid}) ->
   self() ! {start_workers},
   {ok, #state{}}.
 
+handle_call({next_part, ID}, _From, S) ->
+  Reply = maps:get(ID+1, S#state.resources, last_part),
+  {reply, Reply, S};
+
 handle_call(_Request, _From, State) ->
   {reply, ok, State}.
 
-handle_cast({match, Match}, State) ->
+handle_cast({match, Match}, S) ->
   io:fwrite("Found: ~p~n", [Match]),
-  {noreply, State#state{found = State#state.found + 1}};
+  {noreply, S#state{found = S#state.found + 1}};
 
-handle_cast({finished}, State) ->
-  RemainingParts = State#state.searching - 1,
-  io:fwrite("* Part finished, remaining: ~p~n", [RemainingParts]),
-  case RemainingParts of
-    0 -> io:fwrite("# Finished, total matches found: ~p~n", [State#state.found]);
-    _Else -> ok
-  end,
-  {noreply, State#state{searching = RemainingParts}};
+handle_cast({spawn_worker, Matcher, Text}, State) ->
+  NewState = start_spawned_worker(Matcher, Text, State),
+  {noreply, NewState};
 
 handle_cast(_Request, State) ->
   {noreply, State}.
@@ -63,7 +75,8 @@ handle_info({start_workers}, State) ->
   {ok, Filepath} = application:get_env(file),
   {ok, Parts} = application:get_env(parts),
   FileParts = file_slicer:slice(Filepath, Parts),
-  NewState = lists:foldl(fun start_worker/2, State, FileParts),
+  IDFileParts = lists:zipwith(fun (Id, Part) -> {Id, Part} end, lists:seq(1, length(FileParts)), FileParts),
+  NewState = lists:foldl(fun start_worker/2, State, IDFileParts),
   {noreply, NewState};
 
 handle_info(_Info, State) ->
@@ -88,7 +101,13 @@ create_workers_supervisor() -> #{
   restart => temporary
 }.
 
-start_worker(FilePart, S = #state{workers_sup = Sup}) ->
-  {ok, Pid} = supervisor:start_child(Sup, [FilePart]),
+start_worker({ID, FilePart}, S = #state{workers_sup = Sup}) ->
+  {ok, Pid} = supervisor:start_child(Sup, [base, ID, FilePart]),
   Ref = erlang:monitor(process, Pid),
-  S#state{workers_refs = [Ref| S#state.workers_refs]}.
+  S#state{workers_refs = [Ref | S#state.workers_refs],
+          resources = maps:put(ID, FilePart, S#state.resources)}.
+
+start_spawned_worker(Matcher, Text, S = #state{workers_sup = Sup}) ->
+  {ok, Pid} = supervisor:start_child(Sup, [spawned, Matcher, Text]),
+  Ref = erlang:monitor(process, Pid),
+  S#state{workers_refs = [Ref | S#state.workers_refs]}.

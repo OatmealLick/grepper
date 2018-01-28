@@ -8,7 +8,7 @@
     stdlib
    ]},
   {env,[{file, "apps/grepper/resources/file.txt"},
-        {regex, "a"},
+        {regex, "du*p"},
         {parts, 4}]},
   {modules, [file_slicer,
              graph_processor,
