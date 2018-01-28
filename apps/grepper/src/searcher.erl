@@ -20,8 +20,8 @@
 %%% API
 %%%===================================================================
 
-start_link(base, PartID, FilePart) ->
-  gen_server:start_link(?MODULE, {base, PartID, FilePart}, []);
+start_link(base, Matcher, Text) ->
+  gen_server:start_link(?MODULE, {base, Matcher, Text}, []);
 
 start_link(spawned, Matcher, Text) ->
   gen_server:start_link(?MODULE, {spawned, Matcher, Text}, []).
@@ -30,8 +30,8 @@ start_link(spawned, Matcher, Text) ->
 %%% gen_server callbacks
 %%%===================================================================
 
-init({base, PartID, FilePart}) ->
-  self() ! {run, PartID, FilePart},
+init({base, Matcher, Text}) ->
+  self() ! {run, Matcher, Text},
   {ok, #state{}};
 
 init({spawned, Matcher, Text}) ->
@@ -44,25 +44,21 @@ handle_call(_Request, _From, State) ->
 handle_cast(_Request, State) ->
   {noreply, State}.
 
-handle_info({run, PartID, FilePart}, State) ->
-  Matcher = build_matcher(PartID),
-  do_traverse(traverse, [Matcher, FilePart]),
-  {noreply, State};
+handle_info({run, Matcher, Text}, State) ->
+  do_traverse(traverse, [Matcher, Text], State);
 
 handle_info({temp_run, Matcher, Text}, State) ->
-  do_traverse(temp_traverse, [Matcher, Text]),
-  {noreply, State};
+  do_traverse(temp_traverse, [Matcher, Text], State);
 
 handle_info({run_continuation, #matcher{matched = []}}, State) ->
-  {noreply, State};
+  {stop, normal, State};
 handle_info({run_continuation, M}, State) ->
   case workers_manager:get_next_part(M) of
     last_part ->
       notify_if_match_found(M),
-      exit(normal);
-    NextPart -> do_traverse(temp_traverse, [M, NextPart])
-  end,
-  {noreply, State};
+      {stop, normal, State};
+    NextPart -> do_traverse(temp_traverse, [M, NextPart], State)
+  end;
 
 handle_info(_Info, State) ->
   {noreply, State}.
@@ -77,18 +73,13 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
-build_matcher(PartID) ->
-  {ok, Regex} = application:get_env(regex),
-  G = post2nfa:convert(regex2post:convert(Regex)),
-  #matcher{part_id = PartID,
-           graph = G,
-           current_state = G#graph.entry}.
-
-do_traverse(TraverseFuncName, Args) ->
+do_traverse(TraverseFuncName, Args, State) ->
   case apply(graph_traversal, TraverseFuncName, Args) of
     {ok, end_of_input, EndMatcher} ->
-      self() ! {run_continuation, EndMatcher};
-    {ok, finished, EndMatcher} -> exit(normal)
+      self() ! {run_continuation, EndMatcher},
+      {noreply, State};
+    {ok, finished, _} ->
+      {stop, normal, State}
   end.
 
 notify_if_match_found(M) ->
