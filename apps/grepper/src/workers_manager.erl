@@ -88,7 +88,7 @@ create_workers_supervisor() -> #{
   restart => temporary
 }.
 
-start_worker(_FilePart, S = #state{workers_sup = Sup}) ->
-  {ok, Pid} = supervisor:start_child(Sup, []),
+start_worker(FilePart, S = #state{workers_sup = Sup}) ->
+  {ok, Pid} = supervisor:start_child(Sup, [FilePart]),
   Ref = erlang:monitor(process, Pid),
   S#state{workers_refs = [Ref| S#state.workers_refs]}.
