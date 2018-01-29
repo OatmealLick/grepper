@@ -25,6 +25,7 @@ merge(Graph1, Graph2) ->
   GraphWithVertices = add_vertices(Graph1, digraph:vertices(Graph2)),
   add_edges(GraphWithVertices, Graph2, digraph:edges(Graph2)).
 
+
 add_vertices(Graph, []) -> Graph;
 add_vertices(Graph, [Vertex | Tail]) ->
   digraph:add_vertex(Graph, Vertex),
@@ -95,10 +96,12 @@ equal_graph_records(ExpectedGraphRecord, ActualGraphRecord) ->
   SameExitStates = ExpectedGraphRecord#graph.exit =:= ActualGraphRecord#graph.exit,
   SameGraphs and SameEntryStates and SameExitStates.
 
+
 equal_graphs(ExpectedGraph, ActualGraph) ->
   SameVertices = digraph:vertices(ExpectedGraph) =:= digraph:vertices(ActualGraph),
   SameEdges = digraph:vertices(ExpectedGraph) =:= digraph:vertices(ActualGraph),
   SameVertices and SameEdges.
+
 
 literal_test() ->
   Graph = digraph:new(),
@@ -111,6 +114,7 @@ literal_test() ->
   ExpectedGraph = #graph{nfa = Graph, entry = 1, exit = 2},
   TestedGraph = post2nfa:convert("a"),
   ?assert(equal_graph_records(ExpectedGraph, TestedGraph)).
+
 
 multiplication_test() ->
   Graph = digraph:new(),
@@ -127,6 +131,7 @@ multiplication_test() ->
   ExpectedGraph = #graph{nfa = Graph, entry = 3, exit = 3},
   TestedGraph = post2nfa:convert("a*"),
   ?assert(equal_graph_records(ExpectedGraph, TestedGraph)).
+
 
 concatenation_test() ->
   Graph = digraph:new(),
@@ -146,6 +151,7 @@ concatenation_test() ->
   ExpectedGraph = #graph{nfa = Graph, entry = 1, exit = 4},
   TestedGraph = post2nfa:convert("ab."),
   ?assert(equal_graph_records(ExpectedGraph, TestedGraph)).
+
 
 alternation_test() ->
   Graph = digraph:new(),

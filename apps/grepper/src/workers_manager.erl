@@ -49,12 +49,14 @@ init({SupervisorPid}) ->
   self() ! {start_workers},
   {ok, #state{start_timestamp = os:timestamp()}}.
 
+
 handle_call({next_part, ID}, _From, S) ->
   Reply = maps:get(ID+1, S#state.resources, last_part),
   {reply, Reply, S};
 
 handle_call(_Request, _From, State) ->
   {reply, ok, State}.
+
 
 handle_cast({match, Match}, S) ->
   io:fwrite("Found: ~p~n", [Match]),
@@ -66,6 +68,7 @@ handle_cast({spawn_worker, Matcher, Text}, State) ->
 
 handle_cast(_Request, State) ->
   {noreply, State}.
+
 
 handle_info({start_workers_supervisor, SupPid}, S) ->
   WorkersSupervisor = create_workers_supervisor(),
@@ -89,8 +92,10 @@ handle_info({'DOWN', Ref, process, _Pid, _Reason}, S) ->
     _Else -> {noreply, NextState}
   end.
 
+
 terminate(_Reason, _State) ->
   ok.
+
 
 code_change(_OldVsn, State, _Extra) ->
   {ok, State}.
@@ -108,6 +113,7 @@ create_workers_supervisor() -> #{
   restart => temporary
 }.
 
+
 start_worker({ID, FilePart}, S = #state{workers_sup = Sup}) ->
   Matcher = build_matcher(ID),
   {ok, Pid} = supervisor:start_child(Sup, [base, Matcher, FilePart]),
@@ -116,11 +122,13 @@ start_worker({ID, FilePart}, S = #state{workers_sup = Sup}) ->
           total_workers_count = S#state.total_workers_count + 1,
           resources = maps:put(ID, FilePart, S#state.resources)}.
 
+
 start_spawned_worker(Matcher, Text, S = #state{workers_sup = Sup}) ->
   {ok, Pid} = supervisor:start_child(Sup, [spawned, Matcher, Text]),
   Ref = erlang:monitor(process, Pid),
   S#state{workers_refs = [Ref | S#state.workers_refs],
           total_workers_count = S#state.total_workers_count + 1}.
+
 
 build_matcher(PartID) ->
   {ok, Regex} = application:get_env(regex),
@@ -129,10 +137,12 @@ build_matcher(PartID) ->
            graph = G,
            current_state = G#graph.entry}.
 
+
 print_summary(S) ->
   io:fwrite(" Number of spawned workers: ~p~n", [S#state.total_workers_count]),
   io:fwrite("Number of occurances found: ~p~n", [S#state.found]),
   io:fwrite("Search time (min:sec.mics): ~p:~p.~p~n", format_elapsed_time(S)).
+
 
 format_elapsed_time(S) ->
   Mics = timer:now_diff(S#state.end_timestamp, S#state.start_timestamp),
@@ -141,6 +151,7 @@ format_elapsed_time(S) ->
   Mins = Secs div 60,
   NewSecs = Secs - Mins*60,
   [Mins, NewSecs, NewMics].
+
 
 cleanup(S) ->
   exit(S#state.workers_sup, shutdown),

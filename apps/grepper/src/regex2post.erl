@@ -4,8 +4,9 @@
 %% API
 -export([convert/1]).
 
-convert([])    -> [];
+convert([]) -> [];
 convert(Input) -> convert(Input, 0, [], []).
+
 
 convert([], WrittenCount, OperatorStack, Output) ->
   PostfixNotation = lists:append(lists:reverse(OperatorStack), Output),
@@ -29,6 +30,7 @@ convert([Char | Input], WrittenCount, OperatorStack, Output) ->
       end
   end.
 
+
 append_operator(OperatorStack, Output) ->
   case length(OperatorStack) > 0 of
     true ->
@@ -37,6 +39,7 @@ append_operator(OperatorStack, Output) ->
     false ->
       {OperatorStack, concatenation(Output)}
   end.
+
 
 consume_next_char([Char | Input], WrittenCount, OperatorStack, Output) ->
   case Char of
@@ -53,7 +56,9 @@ consume_next_char([Char | Input], WrittenCount, OperatorStack, Output) ->
       {Input, WrittenCount + 1, OperatorStack, [CharLiteral | Output]}
   end.
 
+
 extract_from_parentheses(Input) -> extract_from_parentheses(Input, [], 0).
+
 
 extract_from_parentheses([Char | Input], Inside, Count) ->
   case Char of
@@ -65,10 +70,14 @@ extract_from_parentheses([Char | Input], Inside, Count) ->
     NotParentheses -> extract_from_parentheses(Input, [NotParentheses | Inside], Count)
   end.
 
+
 is_unary_operator(Char) -> lists:member(Char, [$*]).
+
 
 concatenation(Output) -> [$. | Output].
 
+
+%% TEST
 
 re2post_test() ->
   [

@@ -2,7 +2,8 @@
 -include("records.hrl").
 
 %% API
--export([traverse/2, temp_traverse/2, test/0]).
+-export([traverse/2, temp_traverse/2]).
+
 
 %% @doc
 %% Feeds compiled NFA graph with given text and searches for matches.
@@ -29,6 +30,7 @@ traverse(Matcher, Text = <<Char, _Rest/bitstring>>) ->
       traverse(hd(Matchers), next_text(hd(Matchers), Text))
   end.
 
+
 %% @doc
 %% temp_traverse/2 represents the diverged line of looking for a match - the ones that were spawned in states with
 %% more than 1 emanating edge. If a match on spawned traversal fails, the process dies with dead_end message.
@@ -45,6 +47,7 @@ temp_traverse(Matcher, Text = <<Char, _Rest/bitstring>>) ->
       temp_traverse(hd(Matchers), next_text(hd(Matchers), Text))
   end.
 
+
 %% @doc
 %% Checks if matcher has reached the matching state and generates the list of matchers that can be created from
 %% current state by travelling along one of the emanating paths.
@@ -55,9 +58,11 @@ traverse_step(M, Char) ->
   PossibleTransitions = lists:filtermap(fun(Edge) -> is_traversable(Edge, Char) end, Edges),
   _Matchers = lists:map(fun(Transition) -> create_next_state_matcher(M, Transition) end, PossibleTransitions).
 
+
 is_traversable({_Edge, _From, {vertex, ToState}, eps}, _Label) -> {true, {eps, ToState}};
 is_traversable({_Edge, _From, {vertex, ToState}, Label}, Label) -> {true, {Label, ToState}};
 is_traversable(_Edge, _Label) -> false.
+
 
 create_next_state_matcher(M, {eps, NextState}) ->
   #matcher{graph = M#matcher.graph,
@@ -72,6 +77,7 @@ create_next_state_matcher(M, {AcceptedChar, NextState}) ->
            read = true,
            part_id = M#matcher.part_id}.
 
+
 reset(M, Text = <<_Char, Rest/bitstring>>) ->
   Matched = lists:reverse(M#matcher.matched),
   case length(Matched) of
@@ -85,19 +91,13 @@ reset(M, Text = <<_Char, Rest/bitstring>>) ->
                            read = false},
   {ResetMatcher, NextText}.
 
+
 dispatch(Matchers, Text) ->
   lists:foreach(fun(Matcher) -> workers_manager:spawn_worker(Matcher, next_text(Matcher, Text)) end, Matchers).
+
 
 next_text(M, Text = <<_H, Rest/bitstring>>) ->
   case M#matcher.read of
     true -> Rest;
     false -> Text
   end.
-
-
-%% TEST
-
-test() ->
-  Graph = post2nfa:convert(regex2post:convert("ab*")),
-  Matcher = #matcher{graph = Graph, current_state = Graph#graph.entry},
-  traverse(Matcher, <<"abbabcacb">>).

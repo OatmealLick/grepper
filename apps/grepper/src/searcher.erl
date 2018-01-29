@@ -38,11 +38,14 @@ init({spawned, Matcher, Text}) ->
   self() ! {temp_run, Matcher, Text},
   {ok, #state{}}.
 
+
 handle_call(_Request, _From, State) ->
   {reply, ok, State}.
 
+
 handle_cast(_Request, State) ->
   {noreply, State}.
+
 
 handle_info({run, Matcher, Text}, State) ->
   do_traverse(traverse, [Matcher, Text], State);
@@ -63,8 +66,10 @@ handle_info({run_continuation, M}, State) ->
 handle_info(_Info, State) ->
   {noreply, State}.
 
+
 terminate(_Reason, _State) ->
   ok.
+
 
 code_change(_OldVsn, State, _Extra) ->
   {ok, State}.
@@ -82,6 +87,7 @@ do_traverse(TraverseFuncName, Args, State) ->
       {stop, normal, State}
   end.
 
+
 notify_if_match_found(M) ->
   case match_found(M) of
     true ->
@@ -89,6 +95,7 @@ notify_if_match_found(M) ->
       workers_manager:report_match(Match);
     false -> ok
   end.
+
 
 match_found(M) ->
   CurrentState = M#matcher.current_state,
