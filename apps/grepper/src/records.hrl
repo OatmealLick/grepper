@@ -1,0 +1,2 @@
+-record(graph, {nfa, entry, exit}).
+-record(matcher, {graph, current_state, matched = [], read = false, part_id}).
