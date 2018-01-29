@@ -1,27 +1,53 @@
-GREPPER - GREP but bettER
-=====
+# GREPPER - GREP, but bettER
 
+Better grep for future generations.
 
-Better grep for future generations
+## How it works
 
-concurrent grep
+**GREPPER** is a simplified grep-like application used to find patterns in given texts. Contrarily to classic grep, **GREPPER** will search for all fragments matching the given regular expression - not only for lines containing matching fragment.
 
-An OTP application
+**GREPPER** supports limited regular expression syntax which is based on formal definition from formal language theory. That means that **GREPPER** supports following operations:
 
-Stuff:
+* concatenation - this operation has no explicit operator, but is done whenever 2 strings in a regular expression are concatenated (e.g. "ab" is a concatenation of "a" and "b"),
+* alternative (`+`) - this operation means that one of the arguments on either side of the _plus_ `+` is expected to be found in the matched fragment (equivalent to POSIX `|` operator)
+* Kleene star (`*`) - this operation means that the argument to the left side of the _star_ `*` can occur 0 or more times in the matched fragment (equivalent to POSIX `*` operator)
 
-Input file is splitted to a configurable number of parts whch are being processed by processes
+Expressions can be grouped inside parentheses `(...)` forming a unit which is then treated as singular expression - the same can be done using POSIX regexps.
 
-regex logic (Thomson):
-https://swtch.com/~rsc/regexp/regexp1.html
+Highest priority is given to the `*` operator, then it is `+` and concatenation is the last. For instance:
 
-Setup
------
+```
+a+b*c <=> (a+(b*))c
+```
+
+**GREPPER** so far does not support escaping mechanism, so you can not pattern match against `(`, `)`, `*`, `+` and `.` signs (last one is used for internal processing of regexps).
+
+**GREPPER** uses concurrency to:
+1. Divide analyzed file into parts in the beginning of the search and perform search concurrently in all those parts.
+2. Spawn processes on "decision nodes" to prevent searching algorithm from backtracking - whenever _alternative_ or _multiplication (Kleene star)_ is encountered the search splits into 2 separate processes running along different paths in the NFA graph modelling the regular expression.
+
+Building own regexp micro-engine we based on [Thompson approach to regexps](https://swtch.com/~rsc/regexp/regexp1.html) as well as the explenation of regular expressions presented in J.E. Hopcroft, R.Motwani, J.D. Ullman "Introduction to Authomata Theory, Languages and Computation".
+
+## Setup
 rebar can be downloaded using:
 
     $ wget https://s3.amazonaws.com/rebar3/rebar3 && chmod +x rebar3
 
-Build
------
+## Run
 
-    $ rebar3 compile
+Before running **GREPPER** in the `apps/grepper/src/grepper.app.src` file three environment variables should be specified:
+* `file` - path to the file which content will be used for search
+* `regex` - regular expression to be searched for
+* `parts` - number of parts in which the `file` will be split in the beginning (each part is searched concurrently)
+
+Once the environment variables have been set, in the main project directory run:
+```
+$ rebar3 shell
+```
+This will automatically run the **GREPPER** application with environment variables specified in `apps/grepper/src/grepper.app.src`
+
+## Authors
+
+Jakub Gwizdała, [Bzdeco](https://github.com/Bzdeco)
+
+Łukasz Ściga, [OatmealLick](https://github.com/OatmealLick)
