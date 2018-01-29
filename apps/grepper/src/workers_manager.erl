@@ -44,12 +44,16 @@ spawn_worker(Matcher, Text) ->
 %%% gen_server callbacks
 %%%===================================================================
 
+%% @doc
+%% Creates main workers (searching processes) supervisor and spawns initial workers (one for each file part).
 init({SupervisorPid}) ->
   self() ! {start_workers_supervisor, SupervisorPid},
   self() ! {start_workers},
   {ok, #state{start_timestamp = os:timestamp()}}.
 
 
+%% @doc
+%% Returns next chunk of text if present.
 handle_call({next_part, ID}, _From, S) ->
   Reply = maps:get(ID+1, S#state.resources, last_part),
   {reply, Reply, S};
@@ -58,10 +62,14 @@ handle_call(_Request, _From, State) ->
   {reply, ok, State}.
 
 
+%% @doc
+%% Reports match to standard output.
 handle_cast({match, Match}, S) ->
   io:fwrite("Found: ~p~n", [Match]),
   {noreply, S#state{found = S#state.found + 1}};
 
+%% @doc
+%% Starts new temporal worker attaching it to workers supervisor.
 handle_cast({spawn_worker, Matcher, Text}, State) ->
   NewState = start_spawned_worker(Matcher, Text, State),
   {noreply, NewState};
@@ -70,11 +78,16 @@ handle_cast(_Request, State) ->
   {noreply, State}.
 
 
+%% @doc
+%% Starts workers supervisor that will supervise all running searching processes.
 handle_info({start_workers_supervisor, SupPid}, S) ->
   WorkersSupervisor = create_workers_supervisor(),
   {ok, Pid} = supervisor:start_child(SupPid, WorkersSupervisor),
   {noreply, S#state{workers_sup = Pid}};
 
+%% @doc
+%% Starts main workers, one for each file part, that will search through their text parts and continue in the next
+%% ones if needed.
 handle_info({start_workers}, State) ->
   {ok, Filepath} = application:get_env(file),
   {ok, Parts} = application:get_env(parts),
@@ -83,6 +96,9 @@ handle_info({start_workers}, State) ->
   NewState = lists:foldl(fun start_worker/2, State, IDFileParts),
   {noreply, NewState};
 
+%% @doc
+%% Used for monitoring how many workers worker supervisor supervises. When all workers finish their jobs the search
+%% statistics are presented and application is terminated.
 handle_info({'DOWN', Ref, process, _Pid, _Reason}, S) ->
   NextState = S#state{workers_refs = lists:delete(Ref, S#state.workers_refs)},
   case NextState#state.workers_refs of

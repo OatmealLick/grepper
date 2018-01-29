@@ -18,6 +18,8 @@ start_link() ->
 %% Supervisor callbacks
 %%====================================================================
 
+%% @doc
+%% Top level supervisor initializing workers manager.
 init([]) ->
   WorkersManager = create_workers_manager(),
   {ok, {{one_for_all, 0, 1}, [WorkersManager]}}.

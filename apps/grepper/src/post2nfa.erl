@@ -6,6 +6,8 @@
 -export([convert/1]).
 
 
+%% @doc
+%% Converts postfix notation of regular expression into graph representing this regular expression.
 convert(Input) -> convert(Input, [], 0).
 convert([], [BuiltGraph | _], _) -> BuiltGraph;
 convert([Char | Input], Stack, CurrentState) ->
@@ -21,6 +23,8 @@ convert([Char | Input], Stack, CurrentState) ->
   end.
 
 
+%% @doc
+%% Joins to graphs into one.
 merge(Graph1, Graph2) ->
   GraphWithVertices = add_vertices(Graph1, digraph:vertices(Graph2)),
   add_edges(GraphWithVertices, Graph2, digraph:edges(Graph2)).
@@ -39,6 +43,8 @@ add_edges(Graph, AddedGraph, [Edge | Tail]) ->
   add_edges(Graph, AddedGraph, Tail).
 
 
+%% @doc
+%% Creates concatenation between 2 graphs on top of the stack creating 1 graph.
 process_concatenation([Second, First | Tail], State) ->
   Graph = merge(First#graph.nfa, Second#graph.nfa),
   digraph:add_edge(Graph, {vertex, First#graph.exit}, {vertex, Second#graph.entry}, eps),
@@ -48,6 +54,8 @@ process_concatenation([Second, First | Tail], State) ->
   {[ConcatenationGraph | Tail], State}.
 
 
+%% @doc
+%% Creates alternative of 2 graphs on top of the stack creating 1 graph.
 process_alternation([Second, First | Tail], State) ->
   Graph = merge(First#graph.nfa, Second#graph.nfa),
   EntryState = State + 1,
@@ -64,6 +72,8 @@ process_alternation([Second, First | Tail], State) ->
   {[AlternationGraph | Tail], ExitState}.
 
 
+%% @doc
+%% Creates Kleene closure of the graph on top of the stack.
 process_multiplication([Top | Tail], State) ->
   LoopState = State + 1,
   NewVertex = digraph:add_vertex(Top#graph.nfa, {vertex, LoopState}),
@@ -75,6 +85,8 @@ process_multiplication([Top | Tail], State) ->
   {[MultiplicationGraph | Tail], LoopState}.
 
 
+%% @doc
+%% Creates most basic graph accepting singular character.
 process_literal(CharLiteral, Stack, State) ->
   Graph = digraph:new(),
   EntryState = State + 1,

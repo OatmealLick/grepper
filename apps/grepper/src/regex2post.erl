@@ -4,10 +4,11 @@
 %% API
 -export([convert/1]).
 
+
+%% @doc
+%% Converts given regexp to postfix notation later used for building regular expression graph.
 convert([]) -> [];
 convert(Input) -> convert(Input, 0, [], []).
-
-
 convert([], WrittenCount, OperatorStack, Output) ->
   PostfixNotation = lists:append(lists:reverse(OperatorStack), Output),
   case (length(OperatorStack) =:= 0) and (WrittenCount > 1) of
@@ -31,6 +32,8 @@ convert([Char | Input], WrittenCount, OperatorStack, Output) ->
   end.
 
 
+%% @doc
+%% Appends operator from stack to outputted postfix notation.
 append_operator(OperatorStack, Output) ->
   case length(OperatorStack) > 0 of
     true ->
@@ -41,6 +44,8 @@ append_operator(OperatorStack, Output) ->
   end.
 
 
+%% @doc
+%% Reads and processes next char from regular expression.
 consume_next_char([Char | Input], WrittenCount, OperatorStack, Output) ->
   case Char of
     $( ->
@@ -57,9 +62,9 @@ consume_next_char([Char | Input], WrittenCount, OperatorStack, Output) ->
   end.
 
 
+%% @doc
+%% Extracts input from the most outer parentheses.
 extract_from_parentheses(Input) -> extract_from_parentheses(Input, [], 0).
-
-
 extract_from_parentheses([Char | Input], Inside, Count) ->
   case Char of
     $( -> extract_from_parentheses(Input, [Char | Inside], Count + 1);
@@ -71,9 +76,13 @@ extract_from_parentheses([Char | Input], Inside, Count) ->
   end.
 
 
+%% @doc
+%% Checks if an operator is a unary operator (Kleene star).
 is_unary_operator(Char) -> lists:member(Char, [$*]).
 
 
+%% @doc
+%% Appends concatenation operator.
 concatenation(Output) -> [$. | Output].
 
 

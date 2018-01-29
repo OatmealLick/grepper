@@ -4,7 +4,7 @@
 %% API
 -export([slice/2]).
 
-
+%% @doc Splits file given as FilePath into Parts (number) parts
 slice(FilePath, Parts) ->
   {ok, FileContent} = file:read_file(FilePath),
   do_slice(FileContent, Parts).

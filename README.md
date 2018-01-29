@@ -23,13 +23,13 @@ a+b*c <=> (a+(b*))c
 **GREPPER** so far does not support escaping mechanism, so you can not pattern match against `(`, `)`, `*`, `+` and `.` signs (last one is used for internal processing of regexps).
 
 **GREPPER** uses concurrency to:
-1. Divide analyzed file into parts in the beginning of the search and perform search concurrently in all those parts.
+1. Split analyzed file into parts at the beginning of the search and perform search concurrently in all those parts.
 2. Spawn processes on "decision nodes" to prevent searching algorithm from backtracking - whenever _alternative_ or _multiplication (Kleene star)_ is encountered the search splits into 2 separate processes running along different paths in the NFA graph modelling the regular expression.
 
-Building own regexp micro-engine we based on [Thompson approach to regexps](https://swtch.com/~rsc/regexp/regexp1.html) as well as the explenation of regular expressions presented in J.E. Hopcroft, R.Motwani, J.D. Ullman "Introduction to Authomata Theory, Languages and Computation".
+Building own regexp micro-engine we based on [Thompson approach to regexps](https://swtch.com/~rsc/regexp/regexp1.html) as well as the explanation of regular expressions presented in J.E. Hopcroft, R.Motwani, J.D. Ullman "Introduction to Automata Theory, Languages and Computation".
 
 ## Setup
-rebar can be downloaded using:
+**GREPPER** uses rebar3 to for the build process. rebar3 can be downloaded using:
 
     $ wget https://s3.amazonaws.com/rebar3/rebar3 && chmod +x rebar3
 
@@ -44,7 +44,19 @@ Once the environment variables have been set, in the main project directory run:
 ```
 $ rebar3 shell
 ```
-This will automatically run the **GREPPER** application with environment variables specified in `apps/grepper/src/grepper.app.src`
+This will automatically run the **GREPPER** application with settings specified in environment variables.
+
+**GREPPER** can be also run in `apps/grepper` directory with:
+```
+$ rebar3 shell
+> application:start(grepper)
+```
+If **GREPPER** should be run in this way the file path in `file` environmental variable must be changed to `resources/file.txt`.
+
+To run EUnit tests go to `apps/grepper` directory and run:
+```
+$ rebar3 eunit
+```
 
 ## Authors
 

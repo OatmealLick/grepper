@@ -30,10 +30,14 @@ start_link(spawned, Matcher, Text) ->
 %%% gen_server callbacks
 %%%===================================================================
 
+%% @doc
+%% Creates base searching process that will continue searching in entire given text.
 init({base, Matcher, Text}) ->
   self() ! {run, Matcher, Text},
   {ok, #state{}};
 
+%% @doc
+%% Creates spawned searching process that will continue searching until matching fails.
 init({spawned, Matcher, Text}) ->
   self() ! {temp_run, Matcher, Text},
   {ok, #state{}}.
@@ -53,6 +57,9 @@ handle_info({run, Matcher, Text}, State) ->
 handle_info({temp_run, Matcher, Text}, State) ->
   do_traverse(temp_traverse, [Matcher, Text], State);
 
+%% @doc
+%% Called when input for a given process ends. If matcher is in the process of matching it will be provided with the
+%% next chunk of input (from the next part to which file has been split) and traverse it until it fails.
 handle_info({run_continuation, #matcher{matched = []}}, State) ->
   {stop, normal, State};
 handle_info({run_continuation, M}, State) ->
@@ -78,6 +85,9 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
+%% @doc
+%% Performs traverse (@see graph_traversal:traverse/2) or temporal traverse (@see graph_traversal:temp_traverse/2)
+%% and handles its outcome continuing search or ending the process.
 do_traverse(TraverseFuncName, Args, State) ->
   case apply(graph_traversal, TraverseFuncName, Args) of
     {ok, end_of_input, EndMatcher} ->
@@ -88,6 +98,8 @@ do_traverse(TraverseFuncName, Args, State) ->
   end.
 
 
+%% @doc
+%% Notifies workers manager if given Matcher found the match.
 notify_if_match_found(M) ->
   case match_found(M) of
     true ->

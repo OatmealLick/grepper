@@ -8,8 +8,8 @@
     stdlib
    ]},
   {env,[{file, "apps/grepper/resources/file.txt"},
-        {regex, "(a+(b*))c"},
-        {parts, 4}]},
+        {regex, "(aa*bb*cc*dd*ee*)+(ee*dd*cc*bb*aa*)"},
+        {parts, 5}]},
   {modules, [file_slicer,
              graph_processor,
              graph_traversal,
